@@ -26,7 +26,11 @@ private template IsSymbolInModule(string module_, string symbol) {
  */
 private template failedSymbol(string symbol, string module_) {
     void failedSymbol(Args...)(auto ref Args args) {
-        throw new Exception("Symbol \"" ~ symbol ~ "\" not found in " ~ module_);
+        version (unittest) {
+            throw new Exception("Symbol \"" ~ symbol ~ "\" not found in " ~ module_);
+        } else {
+            static assert(0, "Symbol \"" ~ symbol ~ "\" not found in " ~ module_);
+        }
     }
 }
 
