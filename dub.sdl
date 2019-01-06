@@ -1,3 +1,4 @@
 name "localimport"
 authors "Daniel Nielsen" "Dgame" "FR86"
 license "public domain"
+description "Module for D's local import idiom."
