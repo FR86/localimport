@@ -1,9 +1,16 @@
 module localimport;
-template IsModuleImport(string import_) {
+
+/**
+ * Check if string can be used as a straight module import.
+ */
+private template IsModuleImport(string import_) {
     enum IsModuleImport = __traits(compiles, { mixin("import ", import_, ";"); });
 }
 
-template IsSymbolInModule(string module_, string symbol) {
+/**
+ * Check if the requested symbol is found in the specified module.
+ */
+private template IsSymbolInModule(string module_, string symbol) {
     static if (IsModuleImport!module_) {
         enum import_ = module_ ~ ":" ~ symbol;
         enum IsSymbolInModule = __traits(compiles, {
@@ -14,25 +21,42 @@ template IsSymbolInModule(string module_, string symbol) {
     }
 }
 
-template failedSymbol(string symbol, string module_) {
-
-    auto failedSymbol(Args...)(auto ref Args args) {
+/**
+ * Used to generate useful error messages.
+ */
+private template failedSymbol(string symbol, string module_) {
+    void failedSymbol(Args...)(auto ref Args args) {
         throw new Exception("Symbol \"" ~ symbol ~ "\" not found in " ~ module_);
     }
 }
 
-struct FromImpl(string module_) {
+/**
+ * Here the magic happens.
+ * Recursively descends along the dots in usage until it can resolve an imported
+ * module or symbol from module or reaches the end of the dot chain.
+ */
+private struct FromImpl(string module_) {
+    // opDispatch handles access to missing members of an object. 
     template opDispatch(string symbol) {
+        // statically check if symbol is in given module
         static if (IsSymbolInModule!(module_, symbol)) {
+            // Symbol import: emit module import and alias opDispatch to
+            // the symbol.
             mixin("import ", module_, "; alias opDispatch = ", symbol, ";");
-        } else {
+        } else { // symbol not in module
             static if (module_.length == 0) {
+                // module string is of zero length, import of a top level module.
                 enum opDispatch = FromImpl!(symbol)();
             } else {
+                // Check if we have a full module import.
                 enum import_ = module_ ~ "." ~ symbol;
                 static if (IsModuleImport!import_) {
+                    // full module import
                     enum opDispatch = FromImpl!(import_)();
                 } else {
+                    // failed symbol import as well as full module import and
+                    // the last symbol is of nonzero length.
+                    // -> resolution failed!
                     alias opDispatch = failedSymbol!(symbol, module_);
                 }
             }
@@ -40,20 +64,26 @@ struct FromImpl(string module_) {
     }
 }
 
+/**
+ * Used as entry point for local imports.
+ */
 enum from = FromImpl!null();
 
+/**
+ * Test things that should work.
+ */
+unittest {
+    // use a function from standard library directly.
+    from.std.stdio.writeln("Hallo");
+    // assign something from standard library to a local variable.
+    auto _ = from.std.datetime.stopwatch.AutoStart.yes;
+}
+
+/**
+ * Test things that should not work.
+ */
 unittest {
     auto throws = false;
-
-    try {
-        from.std.stdio.writeln("Hallo");
-        auto _ = from.std.datetime.stopwatch.AutoStart.yes;
-    } catch (Exception ex) {
-        throws = true;
-    }
-    assert(!throws);
-
-    throws = false;
     try {
         from.std.stdio.thisFunctionDoesNotExist("Hallo");
     } catch (Exception ex) {
