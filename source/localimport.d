@@ -70,7 +70,7 @@ private struct FromImpl(string module_) {
 }
 
 /**
- * Used as entry point for local imports.
+ * Entry point for local imports.
  */
 enum from = FromImpl!null();
 
@@ -123,4 +123,16 @@ unittest {
 
     assert(throws);
     assert(containsInfo == 2);
+}
+
+/**
+ * Entry point for local imports from the standard library.
+ */
+enum std = from.std;
+
+/**
+ * Test standard library local import.
+ */
+unittest {
+    assert(std.math.PI > 3.15, "Direct local import from standard library failed.");
 }
