@@ -26,10 +26,11 @@ private template IsSymbolInModule(string module_, string symbol) {
  */
 private template failedSymbol(string symbol, string module_) {
     void failedSymbol(Args...)(auto ref Args args) {
-        version (unittest) {
-            throw new Exception("Symbol \"" ~ symbol ~ "\" not found in " ~ module_);
+        enum msg = "Symbol \"" ~ symbol ~ "\" not found in " ~ module_;
+        version (LocalImportUnittest) {
+            throw new Exception(msg);
         } else {
-            static assert(0, "Symbol \"" ~ symbol ~ "\" not found in " ~ module_);
+            static assert(0, msg);
         }
     }
 }
@@ -84,22 +85,42 @@ unittest {
 }
 
 /**
- * Test things that should not work.
+ * Test that calling a nonexistent function with a string throws with a useful
+ * message.
  */
 unittest {
+    import std.algorithm.searching : canFind;
+
     auto throws = false;
+    uint containsInfo;
     try {
         from.std.stdio.thisFunctionDoesNotExist("Hallo");
     } catch (Exception ex) {
         throws = true;
+        containsInfo = canFind(ex.msg, "stdio", "thisFunctionDoesNotExist");
     }
+
+    assert(throws);
+    assert(containsInfo == 2);
+}
+
+/**
+ * Test that calling a nonexistent function with a number throws with a useful 
+ * message.
+ */
+unittest {
+    import std.algorithm.searching : canFind;
+
+    auto throws = false;
+    uint containsInfo;
     try {
         from.std.stdio.thisFunctionDoesNotExist(42);
         throws = false;
     } catch (Exception ex) {
         throws = true;
+        containsInfo = canFind(ex.msg, "stdio", "thisFunctionDoesNotExist");
     }
 
     assert(throws);
-
+    assert(containsInfo == 2);
 }
